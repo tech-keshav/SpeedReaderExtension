@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Reader</title>
+    <link href="[https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css](https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css)" rel="stylesheet">
+    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap)" rel="stylesheet">
+    <style>
+        body {
+            width: 300px;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray */
+            color: #334155; /* Dark slate */
+        }
+        .container {
+            padding: 1.5rem;
+        }
+        .header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b; /* Darker slate */
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #475569; /* Medium slate */
+        }
+        .input-range {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #cbd5e1; /* Light gray */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .input-range:hover {
+            opacity: 1;
+        }
+        .input-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6; /* Blue */
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .input-range::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6; /* Blue */
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .button {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .button-primary {
+            background-color: #2563eb; /* Darker blue */
+            color: white;
+        }
+        .button-primary:hover {
+            background-color: #1d4ed8; /* Even darker blue */
+            transform: translateY(-1px);
+        }
+        .button-secondary {
+            background-color: #ef4444; /* Red */
+            color: white;
+        }
+        .button-secondary:hover {
+            background-color: #dc2626; /* Darker red */
+            transform: translateY(-1px);
+        }
+        .button-tertiary {
+            background-color: #f59e0b; /* Amber */
+            color: white;
+        }
+        .button-tertiary:hover {
+            background-color: #d97706; /* Darker amber */
+            transform: translateY(-1px);
+        }
+        .speed-display {
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            color: #1e293b;
+        }
+        .flex-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .flex-row > div {
+            flex: 1;
+        }
+        .color-input {
+            width: 100%;
+            height: 40px;
+            border: none;
+            padding: 0;
+            background: none;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .color-input::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-input::-webkit-color-swatch {
+            border: none;
+            border-radius: 0.5rem;
+        }
+        .color-input::-moz-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-input::-moz-color-swatch {
+            border: none;
+            border-radius: 0.5rem;
+        }
+        .number-input {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+            font-weight: 600;
+            color: #334155;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            color: #334155;
+            resize: vertical;
+            margin-top: 0.5rem;
+        }
+        .mode-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .mode-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: #e2e8f0; /* Light gray */
+            color: #475569;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .mode-button.active {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+        }
+        .message-box {
+            background-color: #fff3cd; /* Light yellow */
+            color: #664d03; /* Dark yellow text */
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.875rem;
+            border: 1px solid #ffecb5;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container bg-white rounded-lg shadow-xl">
+        <div class="header">Speed Reader</div>
+
+        <div class="mode-toggle">
+            <button id="onPageModeButton" class="mode-button active">On-Page Reading</button>
+            <button id="pastedTextModeButton" class="mode-button">Paste & Read</button>
+        </div>
+
+        <div id="onPageControls">
+            <div class="mb-4">
+                <label for="speedRange" class="label">Reading Speed (Words Per Minute):</label>
+                <input type="range" id="speedRange" min="100" max="1000" value="300" class="input-range">
+                <div id="speedDisplay" class="speed-display">300 WPM</div>
+            </div>
+
+            <div class="flex-row mb-4">
+                <div>
+                    <label for="highlightColor" class="label">Highlight Color:</label>
+                    <input type="color" id="highlightColor" value="#add8e6" class="color-input">
+                </div>
+                <div>
+                    <label for="groupSize" class="label">Words per Group:</label>
+                    <input type="number" id="groupSize" min="1" max="10" value="1" class="number-input">
+                </div>
+            </div>
+
+            <button id="startButton" class="button button-primary">Start Highlighting</button>
+            <button id="pauseResumeButton" class="button button-tertiary hidden">Pause</button>
+            <button id="stopButton" class="button button-secondary hidden">Stop Highlighting</button>
+        </div>
+
+        <div id="pastedTextControls" class="hidden">
+            <label for="pastedText" class="label">Paste your text here:</label>
+            <textarea id="pastedText" placeholder="Copy and paste the text you want to speed read here..."></textarea>
+            <div id="pastedTextMessage" class="message-box hidden"></div>
+            <button id="startPastedButton" class="button button-primary">Start Reading Pasted Text</button>
+            <button id="pauseResumePastedButton" class="button button-tertiary hidden">Pause</button>
+            <button id="stopPastedButton" class="button button-secondary hidden">Stop Reading</button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
