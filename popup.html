@@ -4,222 +4,399 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speed Reader</title>
-    <link href="[https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css](https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css)" rel="stylesheet">
-    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap)" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f0f4f8;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --accent-primary: #3b82f6;
+            --accent-primary-hover: #2563eb;
+            --border-color: #cbd5e1;
+            --button-text-color: #ffffff;
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-hover: #d97706;
+        }
+
+        html.dark {
+            --bg-primary: #1e293b;
+            --bg-secondary: #0f172a;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-primary: #60a5fa;
+            --accent-primary-hover: #3b82f6;
+            --border-color: #334155;
+            --button-text-color: #ffffff;
+        }
+
         body {
-            width: 300px;
+            width: 350px;
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray */
-            color: #334155; /* Dark slate */
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
         }
+
         .container {
-            padding: 1.5rem;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            min-height: calc(100vh - 40px); /* Full height minus padding */
         }
+
         .header {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             font-weight: 700;
-            color: #1e293b; /* Darker slate */
-            margin-bottom: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 16px;
             text-align: center;
         }
-        .label {
+        
+        .section-title {
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: block;
-            color: #475569; /* Medium slate */
+            color: var(--text-secondary);
+            margin-top: 20px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .input-range {
+
+        .mode-toggle-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .mode-button {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background-color: transparent;
+            color: var(--text-secondary);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .mode-button.active {
+            background-color: var(--accent-primary);
+            color: var(--button-text-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .button {
+            display: block;
             width: 100%;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 12px;
+            box-sizing: border-box;
+        }
+
+        .button-primary {
+            background-color: var(--accent-primary);
+            color: var(--button-text-color);
+        }
+        .button-primary:hover {
+            background-color: var(--accent-primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .button-secondary {
+            background-color: var(--danger-color);
+            color: var(--button-text-color);
+        }
+        .button-secondary:hover {
+            background-color: var(--danger-hover);
+            transform: translateY(-1px);
+        }
+        
+        .button-tertiary {
+            background-color: var(--warning-color);
+            color: var(--button-text-color);
+        }
+        .button-tertiary:hover {
+            background-color: var(--warning-hover);
+            transform: translateY(-1px);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Preset Modes */
+        .preset-modes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .preset-button {
+            padding: 12px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+        }
+        .preset-button:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+        .preset-button.active {
+            background-color: var(--accent-primary);
+            color: var(--button-text-color);
+            border-color: var(--accent-primary);
+        }
+        .preset-button .emoji {
+            display: block;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        /* Advanced Settings Toggle */
+        .toggle-switch-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            padding: 8px 0;
+            cursor: pointer;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--accent-primary);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Manual Controls */
+        .manual-controls .control-group {
+            margin-bottom: 12px;
+        }
+        .manual-controls label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .manual-controls input[type="range"],
+        .manual-controls input[type="number"],
+        .manual-controls input[type="color"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+        .manual-controls input[type="range"] {
+            padding: 0; /* Override padding for range */
+             height: 8px;
             -webkit-appearance: none;
-            height: 8px;
-            background: #cbd5e1; /* Light gray */
+            background: var(--border-color);
             border-radius: 5px;
             outline: none;
             opacity: 0.7;
             transition: opacity .2s;
         }
-        .input-range:hover {
-            opacity: 1;
-        }
-        .input-range::-webkit-slider-thumb {
+        .manual-controls input[type="range"]:hover { opacity: 1; }
+
+        .manual-controls input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            background: #3b82f6; /* Blue */
+            background: var(--accent-primary);
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .input-range::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+        .manual-controls input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            background: #3b82f6; /* Blue */
+            background: var(--accent-primary);
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: none;
         }
-        .button {
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            margin-top: 1rem;
+        .manual-controls .speed-display {
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
-        .button-primary {
-            background-color: #2563eb; /* Darker blue */
-            color: white;
-        }
-        .button-primary:hover {
-            background-color: #1d4ed8; /* Even darker blue */
-            transform: translateY(-1px);
-        }
-        .button-secondary {
-            background-color: #ef4444; /* Red */
-            color: white;
-        }
-        .button-secondary:hover {
-            background-color: #dc2626; /* Darker red */
-            transform: translateY(-1px);
-        }
-        .button-tertiary {
-            background-color: #f59e0b; /* Amber */
-            color: white;
-        }
-        .button-tertiary:hover {
-            background-color: #d97706; /* Darker amber */
-            transform: translateY(-1px);
-        }
-        .speed-display {
-            text-align: center;
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-top: 0.5rem;
-            color: #1e293b;
-        }
-        .flex-row {
+        .manual-controls .flex-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
+            gap: 12px;
+            align-items: flex-end;
         }
-        .flex-row > div {
-            flex: 1;
+        .manual-controls .flex-row > div { flex: 1; }
+        .manual-controls input[type="color"] {
+            height: 38px; /* Match number input height */
+            padding: 4px; /* Adjust padding for color input */
         }
-        .color-input {
-            width: 100%;
-            height: 40px;
-            border: none;
-            padding: 0;
-            background: none;
-            cursor: pointer;
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
-        .color-input::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        .color-input::-webkit-color-swatch {
-            border: none;
-            border-radius: 0.5rem;
-        }
-        .color-input::-moz-color-swatch-wrapper {
-            padding: 0;
-        }
-        .color-input::-moz-color-swatch {
-            border: none;
-            border-radius: 0.5rem;
-        }
-        .number-input {
-            width: 100%;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            border: 1px solid #cbd5e1;
-            text-align: center;
-            font-weight: 600;
-            color: #334155;
-        }
-        textarea {
+
+        /* Textarea */
+        textarea#pastedText {
             width: 100%;
             min-height: 100px;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid #cbd5e1;
-            font-family: 'Inter', sans-serif;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             font-size: 0.9rem;
-            color: #334155;
             resize: vertical;
-            margin-top: 0.5rem;
+            margin-top: 8px;
+            box-sizing: border-box;
         }
-        .mode-toggle {
-            display: flex;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+        
+        /* Theme Toggle */
+        .theme-toggle-container {
+            text-align: right;
+            margin-bottom: -10px; /* Pull it up slightly */
         }
-        .mode-button {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
+        #themeToggle {
+            background: none;
+            border: none;
+            font-size: 1.4rem; /* Larger icon */
             cursor: pointer;
-            background-color: #e2e8f0; /* Light gray */
-            color: #475569;
-            transition: background-color 0.2s ease-in-out;
+            color: var(--text-secondary);
+            padding: 4px;
         }
-        .mode-button.active {
-            background-color: #3b82f6; /* Blue */
-            color: white;
-        }
+
         .message-box {
-            background-color: #fff3cd; /* Light yellow */
-            color: #664d03; /* Dark yellow text */
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 12px;
             text-align: center;
-            font-size: 0.875rem;
-            border: 1px solid #ffecb5;
+            font-size: 0.85rem;
+            border: 1px solid var(--border-color);
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container bg-white rounded-lg shadow-xl">
+<body>
+    <div class="container">
+        <div class="theme-toggle-container">
+            <button id="themeToggle" title="Toggle Dark/Light Mode">🌓</button>
+        </div>
         <div class="header">Speed Reader</div>
 
-        <div class="mode-toggle">
-            <button id="onPageModeButton" class="mode-button active">On-Page Reading</button>
-            <button id="pastedTextModeButton" class="mode-button">Paste & Read</button>
+        <div class="mode-toggle-buttons">
+            <button id="onPageModeButton" class="mode-button active" data-mode="onPage">On-Page</button>
+            <button id="pastedTextModeButton" class="mode-button" data-mode="pastedText">Paste Text</button>
         </div>
 
-        <div id="onPageControls">
-            <div class="mb-4">
-                <label for="speedRange" class="label">Reading Speed (Words Per Minute):</label>
-                <input type="range" id="speedRange" min="100" max="1000" value="300" class="input-range">
-                <div id="speedDisplay" class="speed-display">300 WPM</div>
+        <!-- Common Controls: Presets and Advanced Toggle -->
+        <div>
+            <div class="section-title">Preset Modes</div>
+            <div class="preset-modes">
+                <button class="preset-button" data-preset="comprehend">
+                    <span class="emoji">🐢</span> Comprehend
+                </button>
+                <button class="preset-button" data-preset="focus">
+                    <span class="emoji">🚶</span> Focus
+                </button>
+                <button class="preset-button" data-preset="blitz">
+                    <span class="emoji">🚀</span> Blitz
+                </button>
             </div>
 
-            <div class="flex-row mb-4">
-                <div>
-                    <label for="highlightColor" class="label">Highlight Color:</label>
-                    <input type="color" id="highlightColor" value="#add8e6" class="color-input">
+            <label class="toggle-switch-label" for="advancedSettingsToggle">
+                Advanced Settings
+                <div class="toggle-switch">
+                    <input type="checkbox" id="advancedSettingsToggle">
+                    <span class="slider"></span>
                 </div>
-                <div>
-                    <label for="groupSize" class="label">Words per Group:</label>
-                    <input type="number" id="groupSize" min="1" max="10" value="1" class="number-input">
+            </label>
+
+            <div id="manualControls" class="manual-controls hidden">
+                <div class="control-group">
+                    <label for="speedRange">Reading Speed: <span id="speedDisplay" class="speed-display">300 WPM</span></label>
+                    <input type="range" id="speedRange" min="50" max="1500" value="300" step="10">
+                </div>
+                <div class="flex-row">
+                    <div class="control-group">
+                        <label for="groupSize">Words/Group:</label>
+                        <input type="number" id="groupSize" min="1" max="10" value="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="highlightColor">Highlight Color:</label>
+                        <input type="color" id="highlightColor" value="#add8e6">
+                    </div>
                 </div>
             </div>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
 
+        <!-- On-Page Reading Section -->
+        <div id="onPageControlsContainer">
+            <div class="section-title">On-Page Reading</div>
             <button id="startButton" class="button button-primary">Start Highlighting</button>
             <button id="pauseResumeButton" class="button button-tertiary hidden">Pause</button>
             <button id="stopButton" class="button button-secondary hidden">Stop Highlighting</button>
         </div>
 
-        <div id="pastedTextControls" class="hidden">
-            <label for="pastedText" class="label">Paste your text here:</label>
+        <!-- Pasted Text Section -->
+        <div id="pastedTextControlsContainer" class="hidden">
+            <div class="section-title">Paste & Read</div>
             <textarea id="pastedText" placeholder="Copy and paste the text you want to speed read here..."></textarea>
             <div id="pastedTextMessage" class="message-box hidden"></div>
             <button id="startPastedButton" class="button button-primary">Start Reading Pasted Text</button>

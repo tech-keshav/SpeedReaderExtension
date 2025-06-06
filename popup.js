@@ -1,234 +1,368 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // On-Page Mode Elements
+    // --- DOM Elements ---
+    const themeToggleButton = document.getElementById('themeToggle');
     const onPageModeButton = document.getElementById('onPageModeButton');
-    const onPageControls = document.getElementById('onPageControls');
-    const startButton = document.getElementById('startButton');
-    const stopButton = document.getElementById('stopButton');
-    const pauseResumeButton = document.getElementById('pauseResumeButton');
+    const pastedTextModeButton = document.getElementById('pastedTextModeButton');
+    const presetButtons = document.querySelectorAll('.preset-button');
+    const advancedSettingsToggle = document.getElementById('advancedSettingsToggle');
+    const manualControlsContainer = document.getElementById('manualControls');
+
     const speedRange = document.getElementById('speedRange');
     const speedDisplay = document.getElementById('speedDisplay');
-    const highlightColorInput = document.getElementById('highlightColor');
     const groupSizeInput = document.getElementById('groupSize');
+    const highlightColorInput = document.getElementById('highlightColor');
 
-    // Pasted Text Mode Elements
-    const pastedTextModeButton = document.getElementById('pastedTextModeButton');
-    const pastedTextControls = document.getElementById('pastedTextControls');
+    const onPageControlsContainer = document.getElementById('onPageControlsContainer');
+    const startButton = document.getElementById('startButton');
+    const pauseResumeButton = document.getElementById('pauseResumeButton');
+    const stopButton = document.getElementById('stopButton');
+
+    const pastedTextControlsContainer = document.getElementById('pastedTextControlsContainer');
     const pastedTextarea = document.getElementById('pastedText');
+    const pastedTextMessage = document.getElementById('pastedTextMessage');
     const startPastedButton = document.getElementById('startPastedButton');
     const pauseResumePastedButton = document.getElementById('pauseResumePastedButton');
     const stopPastedButton = document.getElementById('stopPastedButton');
-    const pastedTextMessage = document.getElementById('pastedTextMessage');
 
-
+    // --- State Variables ---
+    let currentSettings = {
+        theme: 'system', // 'light', 'dark', 'system'
+        activeMode: 'onPage', // 'onPage', 'pastedText'
+        activePreset: 'focus', // 'comprehend', 'focus', 'blitz', or null for custom
+        advancedModeEnabled: false,
+        wpm: 250,
+        groupSize: 6,
+        highlightColor: '#add8e6'
+    };
+    let isHighlightingActive = false;
     let isPaused = false;
-    let isHighlightingActive = false; // Tracks if *any* highlighting is active (on-page or pasted)
-    let currentMode = 'onPage'; // 'onPage' or 'pastedText'
 
-    // --- UI Management Functions ---
+    const PRESET_CONFIG = {
+        comprehend: { wpm: 150, groupSize: 4 },
+        focus: { wpm: 250, groupSize: 6 },
+        blitz: { wpm: 400, groupSize: 10 }
+    };
 
-    // Shows/hides controls based on the active mode
-    function setMode(mode) {
-        currentMode = mode;
+    // --- Initialization ---
+    loadSettings();
+
+    // --- Settings Persistence ---
+    function loadSettings() {
+        chrome.storage.local.get('speedReaderSettings', (result) => {
+            if (result.speedReaderSettings) {
+                currentSettings = { ...currentSettings, ...result.speedReaderSettings };
+            }
+            applyTheme();
+            applySettingsToUI();
+            updateDynamicUIState(false, false); // Initial state
+        });
+    }
+
+    function saveSettings() {
+        chrome.storage.local.set({ speedReaderSettings: currentSettings }, () => {
+            // console.log('Settings saved:', currentSettings);
+        });
+    }
+
+    // --- Theme Management ---
+    function applyTheme() {
+        const htmlElement = document.documentElement;
+        if (currentSettings.theme === 'dark' || (currentSettings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+            themeToggleButton.textContent = '☀️'; // Sun icon for light mode
+        } else {
+            htmlElement.classList.remove('dark');
+            themeToggleButton.textContent = '🌓'; // Moon icon for dark mode
+        }
+    }
+
+    themeToggleButton.addEventListener('click', () => {
+        if (document.documentElement.classList.contains('dark')) {
+            currentSettings.theme = 'light';
+        } else {
+            currentSettings.theme = 'dark';
+        }
+        // If system was active, clicking toggle makes it explicit light/dark
+        applyTheme();
+        saveSettings();
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (currentSettings.theme === 'system') {
+            applyTheme();
+        }
+    });
+
+    // --- UI Mode Management (On-Page vs Pasted Text) ---
+    function setUIMode(mode) {
+        currentSettings.activeMode = mode;
         if (mode === 'onPage') {
-            onPageControls.classList.remove('hidden');
-            pastedTextControls.classList.add('hidden');
+            onPageControlsContainer.classList.remove('hidden');
+            pastedTextControlsContainer.classList.add('hidden');
             onPageModeButton.classList.add('active');
             pastedTextModeButton.classList.remove('active');
         } else {
-            onPageControls.classList.add('hidden');
-            pastedTextControls.classList.remove('hidden');
+            onPageControlsContainer.classList.add('hidden');
+            pastedTextControlsContainer.classList.remove('hidden');
             onPageModeButton.classList.remove('active');
             pastedTextModeButton.classList.add('active');
         }
-        // Ensure buttons are reset when switching modes
-        updateUI(false, false);
-        // Hide any message boxes when switching modes
-        hideMessageBox();
+        updateDynamicUIState(false, false); // Reset buttons on mode switch
+        saveSettings();
     }
 
-    // Displays a temporary message in the popup
-    function showMessageBox(message, type = 'warning') {
-        pastedTextMessage.textContent = message;
-        pastedTextMessage.classList.remove('hidden');
-        // You can add different classes for 'error', 'success' etc.
-        // For now, it uses the default warning style.
+    onPageModeButton.addEventListener('click', () => setUIMode('onPage'));
+    pastedTextModeButton.addEventListener('click', () => setUIMode('pastedText'));
+
+    // --- Preset Mode Management ---
+    function applyPreset(presetName) {
+        if (PRESET_CONFIG[presetName]) {
+            currentSettings.activePreset = presetName;
+            currentSettings.wpm = PRESET_CONFIG[presetName].wpm;
+            currentSettings.groupSize = PRESET_CONFIG[presetName].groupSize;
+            // Optionally, disable advanced mode when a preset is selected
+            // currentSettings.advancedModeEnabled = false;
+            // advancedSettingsToggle.checked = false;
+            // manualControlsContainer.classList.add('hidden');
+            applySettingsToUI();
+            saveSettings();
+        }
     }
 
-    // Hides the message box
-    function hideMessageBox() {
-        pastedTextMessage.classList.add('hidden');
-        pastedTextMessage.textContent = '';
+    presetButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            applyPreset(button.dataset.preset);
+        });
+    });
+
+    // --- Advanced Settings Management ---
+    advancedSettingsToggle.addEventListener('change', (e) => {
+        currentSettings.advancedModeEnabled = e.target.checked;
+        manualControlsContainer.classList.toggle('hidden', !currentSettings.advancedModeEnabled);
+        if (!currentSettings.advancedModeEnabled && currentSettings.activePreset) {
+            // If hiding advanced and a preset was active, re-apply preset values
+            applyPreset(currentSettings.activePreset);
+        }
+        saveSettings();
+    });
+
+    // --- Apply All Loaded/Current Settings to UI Elements ---
+    function applySettingsToUI() {
+        // Set UI mode
+        setUIMode(currentSettings.activeMode);
+
+        // Set preset button active state
+        presetButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === currentSettings.activePreset);
+        });
+
+        // Set advanced toggle and visibility
+        advancedSettingsToggle.checked = currentSettings.advancedModeEnabled;
+        manualControlsContainer.classList.toggle('hidden', !currentSettings.advancedModeEnabled);
+
+        // Set manual control values
+        speedRange.value = currentSettings.wpm;
+        speedDisplay.textContent = `${currentSettings.wpm} WPM`;
+        groupSizeInput.value = currentSettings.groupSize;
+        highlightColorInput.value = currentSettings.highlightColor;
     }
 
-    // Updates the visibility and text of buttons based on highlighting state
-    function updateUI(highlightingActive, paused) {
-        isHighlightingActive = highlightingActive;
+    // --- Manual Control Event Listeners ---
+    speedRange.addEventListener('input', () => {
+        currentSettings.wpm = parseInt(speedRange.value);
+        speedDisplay.textContent = `${currentSettings.wpm} WPM`;
+        currentSettings.activePreset = null; // Custom setting
+        presetButtons.forEach(btn => btn.classList.remove('active'));
+        saveSettings();
+    });
+
+    groupSizeInput.addEventListener('change', () => {
+        currentSettings.groupSize = parseInt(groupSizeInput.value);
+        currentSettings.activePreset = null; // Custom setting
+        presetButtons.forEach(btn => btn.classList.remove('active'));
+        saveSettings();
+    });
+
+    highlightColorInput.addEventListener('input', () => {
+        currentSettings.highlightColor = highlightColorInput.value;
+        // Color change doesn't necessarily invalidate a preset's WPM/GroupSize
+        // So, we don't nullify activePreset here unless desired.
+        saveSettings();
+    });
+    
+    // Keyboard navigation for WPM slider (basic example)
+    speedRange.addEventListener('keydown', (e) => {
+        let currentValue = parseInt(speedRange.value);
+        const step = parseInt(speedRange.step) || 10;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            speedRange.value = Math.min(parseInt(speedRange.max), currentValue + step);
+            speedRange.dispatchEvent(new Event('input'));
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            speedRange.value = Math.max(parseInt(speedRange.min), currentValue - step);
+            speedRange.dispatchEvent(new Event('input'));
+        }
+    });
+
+
+    // --- Update UI based on Highlighting State (Start/Stop/Pause buttons) ---
+    function updateDynamicUIState(highlighting, paused) {
+        isHighlightingActive = highlighting;
         isPaused = paused;
 
-        if (currentMode === 'onPage') {
-            if (highlightingActive) {
-                startButton.classList.add('hidden');
-                stopButton.classList.remove('hidden');
-                pauseResumeButton.classList.remove('hidden');
-                pauseResumeButton.textContent = paused ? 'Resume' : 'Pause';
-            } else {
-                startButton.classList.remove('hidden');
-                stopButton.classList.add('hidden');
-                pauseResumeButton.classList.add('hidden');
-            }
-            // Hide pasted text buttons
-            startPastedButton.classList.remove('hidden');
-            pauseResumePastedButton.classList.add('hidden');
-            stopPastedButton.classList.add('hidden');
+        const startBtn = currentSettings.activeMode === 'onPage' ? startButton : startPastedButton;
+        const stopBtn = currentSettings.activeMode === 'onPage' ? stopButton : stopPastedButton;
+        const pauseResumeBtn = currentSettings.activeMode === 'onPage' ? pauseResumeButton : pauseResumePastedButton;
 
-        } else { // currentMode === 'pastedText'
-            if (highlightingActive) {
-                startPastedButton.classList.add('hidden');
-                stopPastedButton.classList.remove('hidden');
-                pauseResumePastedButton.classList.remove('hidden');
-                pauseResumePastedButton.textContent = paused ? 'Resume' : 'Pause';
-            } else {
-                startPastedButton.classList.remove('hidden');
-                pauseResumePastedButton.classList.add('hidden');
-                stopPastedButton.classList.add('hidden');
-            }
-            // Hide on-page buttons
-            startButton.classList.remove('hidden'); // Ensure it's visible if they switch back
-            stopButton.classList.add('hidden');
-            pauseResumeButton.classList.add('hidden');
+        // Hide all action buttons initially, then show relevant ones
+        startButton.classList.add('hidden');
+        stopButton.classList.add('hidden');
+        pauseResumeButton.classList.add('hidden');
+        startPastedButton.classList.add('hidden');
+        stopPastedButton.classList.add('hidden');
+        pauseResumePastedButton.classList.add('hidden');
+
+        if (highlighting) {
+            stopBtn.classList.remove('hidden');
+            pauseResumeBtn.classList.remove('hidden');
+            pauseResumeBtn.textContent = paused ? 'Resume' : 'Pause';
+        } else {
+            startBtn.classList.remove('hidden');
         }
     }
 
-    // --- Event Listeners ---
-
-    // Mode toggle buttons
-    onPageModeButton.addEventListener('click', () => setMode('onPage'));
-    pastedTextModeButton.addEventListener('click', () => setMode('pastedText'));
-
-
-    // Load saved settings when the popup opens
-    chrome.storage.local.get(['speed', 'color', 'groupSize', 'lastMode'], (result) => {
-        if (result.speed) {
-            speedRange.value = result.speed;
-            speedDisplay.textContent = `${result.speed} WPM`;
-        }
-        if (result.color) {
-            highlightColorInput.value = result.color;
-        }
-        if (result.groupSize) {
-            groupSizeInput.value = result.groupSize;
-        }
-        // Set initial mode based on last used, or default to onPage
-        setMode(result.lastMode || 'onPage');
-    });
-
-    // Update speed display when slider moves
-    speedRange.addEventListener('input', () => {
-        speedDisplay.textContent = `${speedRange.value} WPM`;
-    });
-
-    // Function to send message to content script
+    // --- Message Passing with Content Script ---
     async function sendMessageToContentScript(action, data = {}) {
-        let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab && tab.id) {
             try {
-                // Execute content script if not already injected (idempotent)
+                // Ensure content script is injected before sending a message
+                // This is more robust if the popup opens before content script auto-injects
                 await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['content.js']
                 });
                 chrome.tabs.sendMessage(tab.id, { action, ...data });
             } catch (error) {
-                console.error("Error executing or sending message to content script:", error);
+                if (error.message.includes('Receiving end does not exist')) {
+                    console.warn('Content script not available on this page or not yet loaded.');
+                    // Optionally, show a message to the user in the popup
+                    if (currentSettings.activeMode === 'onPage') {
+                        // showPopupMessage('Cannot connect to the page. Try reloading the page or ensure it\'s not a restricted browser page.');
+                    }
+                } else {
+                    console.error('Error sending message to content script:', error);
+                }
             }
         }
     }
 
-    // --- On-Page Highlighting Actions ---
+    // --- Action Button Event Listeners ---
+    function getCommonHighlightData() {
+        return {
+            speed: currentSettings.wpm,
+            color: currentSettings.highlightColor,
+            groupSize: currentSettings.groupSize
+        };
+    }
+
     startButton.addEventListener('click', () => {
-        hideMessageBox(); // Hide any previous messages
-        const speed = parseInt(speedRange.value);
-        const color = highlightColorInput.value;
-        const groupSize = parseInt(groupSizeInput.value);
-
-        // Save settings to storage
-        chrome.storage.local.set({ speed, color, groupSize, lastMode: 'onPage' }, () => {
-            console.log('On-Page settings saved:', { speed, color, groupSize });
-        });
-
-        sendMessageToContentScript('startHighlighting', { speed, color, groupSize });
-        updateUI(true, false);
+        sendMessageToContentScript('startHighlighting', getCommonHighlightData());
+        updateDynamicUIState(true, false);
     });
 
     stopButton.addEventListener('click', () => {
         sendMessageToContentScript('stopHighlighting');
-        updateUI(false, false);
+        updateDynamicUIState(false, false);
     });
 
     pauseResumeButton.addEventListener('click', () => {
-        hideMessageBox(); // Hide any previous messages
-        const speed = parseInt(speedRange.value); // Get current speed for resume
         if (isPaused) {
-            sendMessageToContentScript('resumeHighlighting', { speed });
-            updateUI(true, false);
+            sendMessageToContentScript('resumeHighlighting', { speed: currentSettings.wpm });
+            updateDynamicUIState(true, false);
         } else {
             sendMessageToContentScript('pauseHighlighting');
-            updateUI(true, true);
+            updateDynamicUIState(true, true);
         }
     });
 
-    // --- Pasted Text Highlighting Actions ---
     startPastedButton.addEventListener('click', () => {
-        hideMessageBox(); // Hide any previous messages
         const text = pastedTextarea.value.trim();
         if (!text) {
-            showMessageBox('Please paste some text to read!');
+            pastedTextMessage.textContent = 'Please paste some text to read!';
+            pastedTextMessage.classList.remove('hidden');
+            setTimeout(() => pastedTextMessage.classList.add('hidden'), 3000);
             return;
         }
-        const speed = parseInt(speedRange.value); // Use same speed/color/group size settings
-        const color = highlightColorInput.value;
-        const groupSize = parseInt(groupSizeInput.value);
-
-        // Save settings to storage
-        chrome.storage.local.set({ speed, color, groupSize, lastMode: 'pastedText' }, () => {
-            console.log('Pasted text settings saved:', { speed, color, groupSize });
-        });
-
-        sendMessageToContentScript('startPastedHighlighting', { text, speed, color, groupSize });
-        updateUI(true, false);
-    });
-
-    pauseResumePastedButton.addEventListener('click', () => {
-        hideMessageBox(); // Hide any previous messages
-        const speed = parseInt(speedRange.value); // Get current speed for resume
-        if (isPaused) {
-            sendMessageToContentScript('resumeHighlighting', { speed });
-            updateUI(true, false);
-        } else {
-            sendMessageToContentScript('pauseHighlighting');
-            updateUI(true, true);
-        }
+        pastedTextMessage.classList.add('hidden');
+        sendMessageToContentScript('startPastedHighlighting', { text, ...getCommonHighlightData() });
+        updateDynamicUIState(true, false);
     });
 
     stopPastedButton.addEventListener('click', () => {
-        hideMessageBox(); // Hide any previous messages
         sendMessageToContentScript('stopHighlighting'); // stopHighlighting handles both modes
-        updateUI(false, false);
+        updateDynamicUIState(false, false);
     });
 
-
-    // Listen for messages from content script (e.g., when highlighting stops naturally or hotkey is pressed)
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'highlightingStopped') {
-            updateUI(false, false);
-        } else if (request.action === 'hotkeyToggle') {
-            // Hotkey was pressed, update UI based on content script's current state
-            // Hotkey only affects on-page mode, so ensure UI reflects that.
-            setMode('onPage'); // Switch to on-page mode if hotkey was used
-            updateUI(request.isHighlightingActive, request.isPaused);
+    pauseResumePastedButton.addEventListener('click', () => {
+        if (isPaused) {
+            sendMessageToContentScript('resumeHighlighting', { speed: currentSettings.wpm });
+            updateDynamicUIState(true, false);
+        } else {
+            sendMessageToContentScript('pauseHighlighting');
+            updateDynamicUIState(true, true);
         }
     });
 
-    // Initial UI state check (assume not active on popup open, content script will send updates)
-    updateUI(false, false);
+    // --- Listen for Messages from Content Script ---
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'highlightingStopped') {
+            updateDynamicUIState(false, false);
+        } else if (request.action === 'highlightingStarted') {
+            updateDynamicUIState(true, false);
+        } else if (request.action === 'highlightingPaused') {
+            updateDynamicUIState(true, true);
+        } else if (request.action === 'highlightingResumed') {
+            updateDynamicUIState(true, false);
+        } else if (request.action === 'hotkeyToggle') {
+             // Hotkey only affects on-page mode
+            if (currentSettings.activeMode !== 'onPage') {
+                setUIMode('onPage');
+            }
+            updateDynamicUIState(request.isHighlightingActive, request.isPaused);
+        } else if (request.action === 'updateWPMFromHotkey') {
+            if (currentSettings.activeMode === 'onPage') {
+                currentSettings.wpm = request.wpm;
+                currentSettings.activePreset = null; // Hotkey WPM change makes it custom
+                applySettingsToUI(); // Update slider and display
+                saveSettings();
+            }
+        }
+    });
+
+    // --- Keyboard Shortcuts (Space for Pause/Play, Esc for Stop) ---
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+            // Don't interfere with typing in inputs/textarea
+            // except for our WPM slider specific keys handled elsewhere
+            if (e.target.id === 'speedRange' && (e.key.startsWith('Arrow') || e.code === 'Space' || e.key === 'Escape')) {
+                 // Allow specific keys for speedRange, fall through for others
+            } else {
+                return;
+            }
+        }
+
+        if (isHighlightingActive) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                const pauseResumeBtn = currentSettings.activeMode === 'onPage' ? pauseResumeButton : pauseResumePastedButton;
+                pauseResumeBtn.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                const stopBtn = currentSettings.activeMode === 'onPage' ? stopButton : stopPastedButton;
+                stopBtn.click();
+            }
+        }
+    });
 });
